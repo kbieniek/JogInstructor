@@ -117,6 +117,7 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
                     timeSwapBuff += timeInMilliseconds;
                     customHandler.removeCallbacks(updateTimerThread);
                     startStop.setText("Reset");
+                    stopService(mIntentService);
                     mGoogleApiClient.disconnect();
                 }
                 else
@@ -310,12 +311,7 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
         //routePoint.add(new LatLng(location.getLatitude(),location.getLongitude()));
         speed.setText(String.format("%.1f", (location.getSpeed()*3.6)) + "km/h");
 
-        if(routePoint.size() > 1) {
-            float[] result = new float[3];
-            Location.distanceBetween(routePoint.get(routePoint.size()-2).latitude, routePoint.get(routePoint.size()-2).longitude,
-                    routePoint.get(routePoint.size()-1).latitude, routePoint.get(routePoint.size()-1).longitude, result);
-            mCurrentDistance += result[0];
-        }
+
         if(mCurrentDistance > 1000)
         {
             distance.setText(String.format("%.2f", mCurrentDistance/1000) + "km");
@@ -385,6 +381,12 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
             double[] tmpArray = intent.getDoubleArrayExtra("location");
             if(tmpArray != null){
                 routePoint.add(new LatLng(tmpArray[0], tmpArray[1]));
+                if(routePoint.size() > 1) {
+                    float[] result = new float[3];
+                    Location.distanceBetween(routePoint.get(routePoint.size()-2).latitude, routePoint.get(routePoint.size()-2).longitude,
+                            routePoint.get(routePoint.size()-1).latitude, routePoint.get(routePoint.size()-1).longitude, result);
+                    mCurrentDistance += result[0];
+                }
             }
         }
     }

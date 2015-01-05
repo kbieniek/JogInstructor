@@ -54,8 +54,7 @@ public class LocationTraceService extends IntentService implements GoogleApiClie
 
             String status = "success";
             double[]tmpLatLng = new double[2];
-            int size = locationList.size();
-            for(int i = 0; i < size; i++) {
+            for(int i = 0; i < locationList.size(); i++) {
                 tmpLatLng[0] = locationList.get(i).getLatitude();
                 tmpLatLng[1] = locationList.get(i).getLongitude();
                 localIntent = new Intent(Constants.BROADCAST_ACTION)
