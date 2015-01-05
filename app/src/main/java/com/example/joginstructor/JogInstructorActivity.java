@@ -1,14 +1,19 @@
 package com.example.joginstructor;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -36,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+
 public class JogInstructorActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener{
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
@@ -55,12 +61,10 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
     private List<LatLng> routePoint = new ArrayList<>();
     private Polyline route;
 
-    private String LAST_UPDATED_TIME_STRING_KEY;
-    private String LOCATION_KEY;
-    private String REQUESTING_LOCATION_UPDATES_KEY;
     private TextView speed;
     private double mCurrentDistance = 0;
     private boolean setStartMarker = true;
+    private Intent mIntentService;
 
 
     @Override
@@ -73,10 +77,24 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
         createLocationRequest();
         buildGoogleApiClient();
 
+
         startStop = (Button)findViewById(R.id.startStop);
         mTimeLabel = (TextView)findViewById(R.id.mTimeLabel);
         distance = (TextView)findViewById(R.id.distance);
         speed = (TextView)findViewById(R.id.speed);
+
+
+        // The filter's action is BROADCAST_ACTION
+        IntentFilter mStatusIntentFilter = new IntentFilter(
+                Constants.BROADCAST_ACTION);
+        // Instantiates a new DownloadStateReceiver
+        DownloadStateReceiver mDownloadStateReceiver =
+                new DownloadStateReceiver();
+        // Registers the DownloadStateReceiver and its intent filters
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                mDownloadStateReceiver,
+                mStatusIntentFilter);
+
 
         startStop.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -91,6 +109,7 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
                     route = mMap.addPolyline(new PolylineOptions().width(10).color(Color.RED).geodesic(true));
                     startTime = SystemClock.uptimeMillis();
                     customHandler.postDelayed(updateTimerThread, 0);
+                    triggerServiceAction();
                     startStop.setText("Pause");
                 }
                 else if(startStop.getText().toString().equalsIgnoreCase("Pause")){
@@ -114,6 +133,13 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
 
     }
 
+    private void triggerServiceAction() {
+        mIntentService = new Intent(this, LocationTraceService.class);
+        mIntentService.setData(Uri.parse("https://developer.android.com/training/run-background-service/report-status.html"));
+        mIntentService.putExtra("gatherLocation", true);
+        startService(mIntentService);
+    }
+
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -133,10 +159,10 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
     }
 
     public void onSaveInstanceState(Bundle savedInstanceState) {
-        savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY,
+        savedInstanceState.putBoolean(Constants.REQUESTING_LOCATION_UPDATES_KEY,
                 mRequestedLocationUpdates);
-        savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
-        savedInstanceState.putString(LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
+        savedInstanceState.putParcelable(Constants.LOCATION_KEY, mCurrentLocation);
+        savedInstanceState.putString(Constants.LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
         super.onSaveInstanceState(savedInstanceState);
     }
 
@@ -145,24 +171,24 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
             // Update the value of mRequestingLocationUpdates from the Bundle, and
             // make sure that the Start Updates and Stop Updates buttons are
             // correctly enabled or disabled.
-            if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
+            if (savedInstanceState.keySet().contains(Constants.REQUESTING_LOCATION_UPDATES_KEY)) {
                 mRequestedLocationUpdates = savedInstanceState.getBoolean(
-                        REQUESTING_LOCATION_UPDATES_KEY);
+                        Constants.REQUESTING_LOCATION_UPDATES_KEY);
                 //setButtonsEnabledState();
             }
 
             // Update the value of mCurrentLocation from the Bundle and update the
             // UI to show the correct latitude and longitude.
-            if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
+            if (savedInstanceState.keySet().contains(Constants.LOCATION_KEY)) {
                 // Since LOCATION_KEY was found in the Bundle, we can be sure that
-                // mCurrentLocationis not null.
-                mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
+                // mCurrentLocation is not null.
+                mCurrentLocation = savedInstanceState.getParcelable(Constants.LOCATION_KEY);
             }
 
             // Update the value of mLastUpdateTime from the Bundle and update the UI.
-            if (savedInstanceState.keySet().contains(LAST_UPDATED_TIME_STRING_KEY)) {
+            if (savedInstanceState.keySet().contains(Constants.LAST_UPDATED_TIME_STRING_KEY)) {
                 mLastUpdateTime = savedInstanceState.getString(
-                        LAST_UPDATED_TIME_STRING_KEY);
+                        Constants.LAST_UPDATED_TIME_STRING_KEY);
             }
             updateUI();
         }
@@ -335,4 +361,19 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
         }
     };
 
+    // Broadcast receiver for receiving status updates from the IntentService
+    private class DownloadStateReceiver extends BroadcastReceiver
+    {
+        // Prevents instantiation
+        private DownloadStateReceiver() {
+        }
+        // Called when the BroadcastReceiver gets an Intent it's registered to receive
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            double[] tmpArray = intent.getDoubleArrayExtra("location");
+            routePoint.add(new LatLng(tmpArray[0], tmpArray[1]));
+
+        }
+    }
 }
