@@ -153,9 +153,20 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
         super.onResume();
         setUpMapIfNeeded();
         setMapOptions();
-        if (mGoogleApiClient != null && mGoogleApiClient.isConnected() && !mRequestedLocationUpdates) {
+        if (routePoint.size() > 0) {
+            updateUI();
+        }
+        if (mGoogleApiClient.isConnected() /*&& !mRequestedLocationUpdates*/) {
             startLocationUpdates();
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        Intent setIntent = new Intent(Intent.ACTION_MAIN);
+        setIntent.addCategory(Intent.CATEGORY_HOME);
+        setIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(setIntent);
     }
 
     public void onSaveInstanceState(Bundle savedInstanceState) {
@@ -296,7 +307,7 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
             setStartMarker = false;
         }
         mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
-        routePoint.add(new LatLng(location.getLatitude(),location.getLongitude()));
+        //routePoint.add(new LatLng(location.getLatitude(),location.getLongitude()));
         speed.setText(String.format("%.1f", (location.getSpeed()*3.6)) + "km/h");
 
         if(routePoint.size() > 1) {
@@ -372,8 +383,9 @@ public class JogInstructorActivity extends FragmentActivity implements GoogleApi
         public void onReceive(Context context, Intent intent) {
 
             double[] tmpArray = intent.getDoubleArrayExtra("location");
-            routePoint.add(new LatLng(tmpArray[0], tmpArray[1]));
-
+            if(tmpArray != null){
+                routePoint.add(new LatLng(tmpArray[0], tmpArray[1]));
+            }
         }
     }
 }
